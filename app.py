@@ -127,6 +127,13 @@ if run_btn:
             st.stop()
         except Exception as e:
             st.error(f"Drive 접근 오류: {e}")
+            # 디버그: 서비스 계정 이메일 표시
+            try:
+                from validators.drive import get_drive_service
+                _, email = get_drive_service()
+                st.info(f"현재 인증된 서비스 계정: **{email}**\n\n이 이메일이 Drive 폴더에 **뷰어**로 공유되어 있는지 확인하세요.")
+            except Exception:
+                st.warning("서비스 계정 인증 자체가 실패했습니다. Secrets 설정을 확인하세요.")
             st.stop()
 
     # ── 2. PPT 파싱 ──────────────────────────────────────

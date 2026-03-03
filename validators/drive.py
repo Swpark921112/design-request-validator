@@ -32,6 +32,7 @@ class DriveValidationResult:
     folder_name: str = ""
     folder_name_status: str = STATUS_FAIL
     folder_name_message: str = ""
+    service_account_email: str = ""
     pptx_file: DriveFile | None = None
     pptx_status: str = STATUS_FAIL
     pptx_message: str = ""
@@ -61,26 +62,32 @@ def get_drive_service():
     인증 방법 (우선순위):
     1. Streamlit Secrets (st.secrets["gcp_service_account"]) — Cloud 배포용
     2. 환경변수 GOOGLE_SERVICE_ACCOUNT_KEY (JSON 파일 경로) — 로컬용
+
+    Returns:
+        (service, client_email) 튜플
     """
     try:
         import streamlit as st
         if "gcp_service_account" in st.secrets:
+            info = dict(st.secrets["gcp_service_account"])
             creds = service_account.Credentials.from_service_account_info(
-                dict(st.secrets["gcp_service_account"]),
+                info,
                 scopes=["https://www.googleapis.com/auth/drive.readonly"],
             )
-            return build("drive", "v3", credentials=creds)
+            return build("drive", "v3", credentials=creds), info.get("client_email", "알 수 없음")
     except Exception:
         pass
 
     # 로컬: 환경변수에서 JSON 파일 경로 읽기
     key_path = os.getenv("GOOGLE_SERVICE_ACCOUNT_KEY", "")
     if key_path and Path(key_path).exists():
+        with open(key_path) as f:
+            info = json.load(f)
         creds = service_account.Credentials.from_service_account_file(
             key_path,
             scopes=["https://www.googleapis.com/auth/drive.readonly"],
         )
-        return build("drive", "v3", credentials=creds)
+        return build("drive", "v3", credentials=creds), info.get("client_email", "알 수 없음")
 
     raise FileNotFoundError(
         "Google Drive 서비스 계정이 설정되지 않았습니다.\n\n"
@@ -165,7 +172,7 @@ def validate_drive_folder(folder_url: str) -> DriveValidationResult:
         result.folder_name_message = "올바른 Google Drive 폴더 URL이 아닙니다."
         return result
 
-    service = get_drive_service()
+    service, result.service_account_email = get_drive_service()
 
     # 폴더명 검증
     result.folder_name = get_folder_name(service, folder_id)
