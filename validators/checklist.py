@@ -6,9 +6,9 @@ MD 가이드 섹션 10 기반 16개 항목을 자동 검증한다.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Any
 
 from config import STATUS_FAIL, STATUS_PASS, STATUS_WARN
-from validators.drive import DriveValidationResult
 from validators.pptx_parser import ParsedPPTX
 
 
@@ -23,7 +23,7 @@ class CheckItem:
 
 
 def validate_checklist(
-    drive_result: DriveValidationResult,
+    drive_result: Any,
     parsed_pptx: ParsedPPTX | None,
     field_results: list[dict] | None = None,
     asset_results: list[dict] | None = None,
