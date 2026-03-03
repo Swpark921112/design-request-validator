@@ -101,7 +101,13 @@ def list_files_in_folder(service, folder_id: str) -> list[DriveFile]:
     query = f"'{folder_id}' in parents and trashed = false"
     results = (
         service.files()
-        .list(q=query, fields="files(id, name, mimeType, size)", pageSize=100)
+        .list(
+            q=query,
+            fields="files(id, name, mimeType, size)",
+            pageSize=100,
+            includeItemsFromAllDrives=True,
+            supportsAllDrives=True,
+        )
         .execute()
     )
     files = []
@@ -119,13 +125,13 @@ def list_files_in_folder(service, folder_id: str) -> list[DriveFile]:
 
 def get_folder_name(service, folder_id: str) -> str:
     """폴더명을 조회한다."""
-    result = service.files().get(fileId=folder_id, fields="name").execute()
+    result = service.files().get(fileId=folder_id, fields="name", supportsAllDrives=True).execute()
     return result.get("name", "")
 
 
 def download_file(service, file_id: str, dest_path: str) -> str:
     """Drive 파일을 로컬에 다운로드한다."""
-    request = service.files().get_media(fileId=file_id)
+    request = service.files().get_media(fileId=file_id, supportsAllDrives=True)
     with open(dest_path, "wb") as f:
         downloader = MediaIoBaseDownload(f, request)
         done = False
