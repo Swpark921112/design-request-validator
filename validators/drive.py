@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import io
 import os
 import re
@@ -55,18 +56,37 @@ def extract_folder_id(url: str) -> str | None:
 
 
 def get_drive_service():
-    """Google Drive API 서비스 객체를 생성한다."""
+    """Google Drive API 서비스 객체를 생성한다.
+
+    인증 방법 (우선순위):
+    1. Streamlit Secrets (st.secrets["gcp_service_account"]) — Cloud 배포용
+    2. 환경변수 GOOGLE_SERVICE_ACCOUNT_KEY (JSON 파일 경로) — 로컬용
+    """
+    try:
+        import streamlit as st
+        if "gcp_service_account" in st.secrets:
+            creds = service_account.Credentials.from_service_account_info(
+                dict(st.secrets["gcp_service_account"]),
+                scopes=["https://www.googleapis.com/auth/drive.readonly"],
+            )
+            return build("drive", "v3", credentials=creds)
+    except Exception:
+        pass
+
+    # 로컬: 환경변수에서 JSON 파일 경로 읽기
     key_path = os.getenv("GOOGLE_SERVICE_ACCOUNT_KEY", "")
-    if not key_path or not Path(key_path).exists():
-        raise FileNotFoundError(
-            f"서비스 계정 키 파일을 찾을 수 없습니다: {key_path}\n"
-            ".env 파일에 GOOGLE_SERVICE_ACCOUNT_KEY 경로를 설정해주세요."
+    if key_path and Path(key_path).exists():
+        creds = service_account.Credentials.from_service_account_file(
+            key_path,
+            scopes=["https://www.googleapis.com/auth/drive.readonly"],
         )
-    creds = service_account.Credentials.from_service_account_file(
-        key_path,
-        scopes=["https://www.googleapis.com/auth/drive.readonly"],
+        return build("drive", "v3", credentials=creds)
+
+    raise FileNotFoundError(
+        "Google Drive 서비스 계정이 설정되지 않았습니다.\n\n"
+        "**Streamlit Cloud:** Settings → Secrets에 gcp_service_account를 추가하세요.\n"
+        "**로컬:** .env에 GOOGLE_SERVICE_ACCOUNT_KEY=경로를 설정하세요."
     )
-    return build("drive", "v3", credentials=creds)
 
 
 def list_files_in_folder(service, folder_id: str) -> list[DriveFile]:
